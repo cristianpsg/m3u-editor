@@ -508,7 +508,7 @@ class XtreamApiController extends Controller
 
             // Build response - check if this is panel_api endpoint
             $isPanelApi = $request->route()?->getName() === 'xtream.api.panel';
-            
+
             $responseData = [
                 'user_info' => $userInfo,
                 'server_info' => $serverInfo,

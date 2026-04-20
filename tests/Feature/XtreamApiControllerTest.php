@@ -930,7 +930,7 @@ class XtreamApiControllerTest extends TestCase
         $response->assertJsonPath('categories.live.0.category_name', 'Live TV');
         $response->assertJsonPath('categories.vod.0.category_name', 'Movies');
         $response->assertJsonPath('categories.series.0.category_name', 'Series');
-        
+
         // Verify available_channels count (1 live + 1 vod + 1 series = 3)
         $response->assertJsonPath('available_channels', 3);
     }
@@ -950,12 +950,12 @@ class XtreamApiControllerTest extends TestCase
                 'series',
             ],
         ]);
-        
+
         // Verify categories are empty arrays
         $response->assertJsonPath('categories.live', []);
         $response->assertJsonPath('categories.vod', []);
         $response->assertJsonPath('categories.series', []);
-        
+
         // Verify available_channels is 0
         $response->assertJsonPath('available_channels', 0);
     }
@@ -977,11 +977,11 @@ class XtreamApiControllerTest extends TestCase
         ]));
 
         $response->assertOk();
-        
+
         // Verify that categories and available_channels are NOT in the response
         $response->assertJsonMissing(['categories']);
         $response->assertJsonMissing(['available_channels']);
-        
+
         // But user_info and server_info should still be there
         $response->assertJsonStructure([
             'user_info',
@@ -1005,7 +1005,7 @@ class XtreamApiControllerTest extends TestCase
         ]));
 
         $response->assertOk();
-        
+
         // Verify that categories and available_channels are NOT in the response for player_api
         $response->assertJsonMissing(['categories']);
         $response->assertJsonMissing(['available_channels']);
