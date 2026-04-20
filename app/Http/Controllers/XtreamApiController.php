@@ -616,7 +616,20 @@ class XtreamApiController extends Controller
                 'features' => ['viewers', 'progress'],
             ];
 
-            return response()->json($responseData);
+            $response = response()->json($responseData);
+
+            // Apply gzip compression for panel_api endpoint
+            if ($isPanelApi) {
+                $content = $response->getContent();
+                $gzipped = gzcompress($content, 9);
+
+                return response($gzipped)
+                    ->header('Content-Encoding', 'gzip')
+                    ->header('Content-Type', 'application/json')
+                    ->header('Content-Length', strlen($gzipped));
+            }
+
+            return $response;
         } elseif ($action === 'get_live_streams') {
             // Handle network playlists - return networks as live streams
             if ($isNetworkPlaylist) {
