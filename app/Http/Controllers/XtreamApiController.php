@@ -548,7 +548,7 @@ class XtreamApiController extends Controller
                 } else {
                     $liveCategories = $playlist->groups()->orderBy('sort_order')->whereHas('channels', function ($query) use ($aliasLiveGroupFilter) {
                         $query->where('enabled', true)->where('is_vod', false);
-                        if (!empty($aliasLiveGroupFilter)) {
+                        if (! empty($aliasLiveGroupFilter)) {
                             $query->whereIn('group_internal', $aliasLiveGroupFilter);
                         }
                     })->get()->map(fn ($group) => [
