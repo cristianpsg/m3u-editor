@@ -618,8 +618,8 @@ class XtreamApiController extends Controller
 
             $response = response()->json($responseData);
 
-            // Apply gzip compression for panel_api endpoint
-            if ($isPanelApi) {
+            // Apply gzip compression for panel_api endpoint if client accepts it
+            if ($isPanelApi && str_contains($request->header('Accept-Encoding', ''), 'gzip')) {
                 $content = $response->getContent();
                 $gzipped = gzcompress($content, 9);
 
