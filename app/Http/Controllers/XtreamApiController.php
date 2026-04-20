@@ -506,14 +506,89 @@ class XtreamApiController extends Controller
                 'process' => true, // Always true
             ];
 
-            return response()->json([
+            // Build response - check if this is panel_api endpoint
+            $isPanelApi = $request->route()?->getName() === 'xtream.api.panel';
+            
+            $responseData = [
                 'user_info' => $userInfo,
                 'server_info' => $serverInfo,
-                'm3u_editor' => [
-                    'version' => config('dev.version'),
-                    'features' => ['viewers', 'progress'],
-                ],
-            ]);
+            ];
+
+            // Only add categories and available_channels for panel_api endpoint
+            if ($isPanelApi) {
+                $categories = [];
+                if ($isCustomPlaylist) {
+                    // For custom playlists, simplified version
+                    $liveChannelIds = $playlist->channels()->where('enabled', true)->where('is_vod', false)->pluck('id');
+                    $liveTags = $playlist->groupTags()->whereIn('id', function ($query) use ($liveChannelIds) {
+                        $query->select('tag_id')->from('taggables')->where('taggable_type', Channel::class)->whereIn('taggable_id', $liveChannelIds);
+                    })->orderBy('order_column')->get();
+                    $liveCategories = $liveTags->map(fn ($tag) => [
+                        'category_id' => (string) $tag->id,
+                        'category_name' => $tag->name,
+                    ])->toArray();
+
+                    $vodChannelIds = $playlist->channels()->where('enabled', true)->where('is_vod', true)->pluck('id');
+                    $vodTags = $playlist->groupTags()->whereIn('id', function ($query) use ($vodChannelIds) {
+                        $query->select('tag_id')->from('taggables')->where('taggable_type', Channel::class)->whereIn('taggable_id', $vodChannelIds);
+                    })->orderBy('order_column')->get();
+                    $vodCategories = $vodTags->map(fn ($tag) => [
+                        'category_id' => (string) $tag->id,
+                        'category_name' => $tag->name,
+                    ])->toArray();
+
+                    $seriesIds = $playlist->series()->where('enabled', true)->pluck('id');
+                    $seriesTags = $playlist->groupTags()->whereIn('id', function ($query) use ($seriesIds) {
+                        $query->select('tag_id')->from('taggables')->where('taggable_type', Series::class)->whereIn('taggable_id', $seriesIds);
+                    })->orderBy('order_column')->get();
+                    $seriesCategories = $seriesTags->map(fn ($tag) => [
+                        'category_id' => (string) $tag->id,
+                        'category_name' => $tag->name,
+                    ])->toArray();
+                } else {
+                    $liveCategories = $playlist->groups()->orderBy('sort_order')->whereHas('channels', function ($query) use ($aliasLiveGroupFilter) {
+                        $query->where('enabled', true)->where('is_vod', false);
+                        if (!empty($aliasLiveGroupFilter)) {
+                            $query->whereIn('group_internal', $aliasLiveGroupFilter);
+                        }
+                    })->get()->map(fn ($group) => [
+                        'category_id' => (string) $group->id,
+                        'category_name' => $group->name,
+                    ])->toArray();
+
+                    $vodCategories = $playlist->groups()->orderBy('sort_order')->whereHas('channels', function ($query) {
+                        $query->where('enabled', true)->where('is_vod', true);
+                    })->get()->map(fn ($group) => [
+                        'category_id' => (string) $group->id,
+                        'category_name' => $group->name,
+                    ])->toArray();
+
+                    $seriesCategories = $playlist->groups()->orderBy('sort_order')->whereHas('series', function ($query) {
+                        $query->where('enabled', true);
+                    })->get()->map(fn ($group) => [
+                        'category_id' => (string) $group->id,
+                        'category_name' => $group->name,
+                    ])->toArray();
+                }
+                $categories = [
+                    'live' => $liveCategories,
+                    'vod' => $vodCategories,
+                    'series' => $seriesCategories,
+                ];
+
+                // Available channels count
+                $availableChannels = $playlist->channels()->where('enabled', true)->count() + $playlist->series()->where('enabled', true)->count();
+
+                $responseData['categories'] = $categories;
+                $responseData['available_channels'] = $availableChannels;
+            }
+
+            $responseData['m3u_editor'] = [
+                'version' => config('dev.version'),
+                'features' => ['viewers', 'progress'],
+            ];
+
+            return response()->json($responseData);
         } elseif ($action === 'get_live_streams') {
             // Handle network playlists - return networks as live streams
             if ($isNetworkPlaylist) {

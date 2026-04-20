@@ -102,6 +102,8 @@ class XtreamApiControllerTest extends TestCase
         $response->assertJsonStructure([
             'user_info',
             'server_info',
+            'categories',
+            'available_channels',
         ]);
         $response->assertJsonStructure([
             'user_info' => [
@@ -130,6 +132,37 @@ class XtreamApiControllerTest extends TestCase
                 'timestamp_now',
                 'time_now',
                 'process',
+            ],
+        ]);
+        $response->assertJsonStructure([
+            'categories' => [
+                'live',
+                'vod',
+                'series',
+            ],
+        ]);
+        $response->assertJsonStructure([
+            'categories.live' => [
+                '*' => [
+                    'category_id',
+                    'category_name',
+                ],
+            ],
+        ]);
+        $response->assertJsonStructure([
+            'categories.vod' => [
+                '*' => [
+                    'category_id',
+                    'category_name',
+                ],
+            ],
+        ]);
+        $response->assertJsonStructure([
+            'categories.series' => [
+                '*' => [
+                    'category_id',
+                    'category_name',
+                ],
             ],
         ]);
     }
@@ -839,5 +872,142 @@ class XtreamApiControllerTest extends TestCase
                 'timestamp_now',
             ],
         ]);
+    }
+
+    public function test_panel_api_endpoint_returns_categories_and_available_channels(): void
+    {
+        // Create some channels and series to populate categories
+        $group = Group::factory()->for($this->user)->create(['name' => 'Live TV']);
+        $liveChannel = Channel::factory()->for($this->playlist)->for($group)->create([
+            'enabled' => true,
+            'is_vod' => false,
+            'title_custom' => 'Test Live Channel',
+        ]);
+
+        $vodGroup = Group::factory()->for($this->user)->create(['name' => 'Movies']);
+        $vodChannel = Channel::factory()->for($this->playlist)->for($vodGroup)->create([
+            'enabled' => true,
+            'is_vod' => true,
+            'title' => 'Test Movie',
+        ]);
+
+        $seriesGroup = Group::factory()->for($this->user)->create(['name' => 'Series']);
+        $series = Series::factory()->for($this->user)->for($this->playlist)->for($seriesGroup)->create([
+            'enabled' => true,
+        ]);
+
+        $response = $this->getJson(route('xtream.api.panel').'?'.http_build_query([
+            'username' => $this->username,
+            'password' => $this->password,
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'categories' => [
+                'live' => [
+                    '*' => [
+                        'category_id',
+                        'category_name',
+                    ],
+                ],
+                'vod' => [
+                    '*' => [
+                        'category_id',
+                        'category_name',
+                    ],
+                ],
+                'series' => [
+                    '*' => [
+                        'category_id',
+                        'category_name',
+                    ],
+                ],
+            ],
+            'available_channels',
+        ]);
+
+        // Verify the categories contain the expected data
+        $response->assertJsonPath('categories.live.0.category_name', 'Live TV');
+        $response->assertJsonPath('categories.vod.0.category_name', 'Movies');
+        $response->assertJsonPath('categories.series.0.category_name', 'Series');
+        
+        // Verify available_channels count (1 live + 1 vod + 1 series = 3)
+        $response->assertJsonPath('available_channels', 3);
+    }
+
+    public function test_panel_api_endpoint_with_no_channels_returns_empty_categories(): void
+    {
+        $response = $this->getJson(route('xtream.api.panel').'?'.http_build_query([
+            'username' => $this->username,
+            'password' => $this->password,
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'categories' => [
+                'live',
+                'vod',
+                'series',
+            ],
+        ]);
+        
+        // Verify categories are empty arrays
+        $response->assertJsonPath('categories.live', []);
+        $response->assertJsonPath('categories.vod', []);
+        $response->assertJsonPath('categories.series', []);
+        
+        // Verify available_channels is 0
+        $response->assertJsonPath('available_channels', 0);
+    }
+
+    public function test_player_api_endpoint_does_not_return_categories_and_available_channels(): void
+    {
+        // Create some channels to ensure they would appear in panel_api
+        $group = Group::factory()->for($this->user)->create();
+        Channel::factory()->for($this->playlist)->for($group)->create([
+            'enabled' => true,
+            'is_vod' => false,
+        ]);
+
+        // Call player_api endpoint
+        $response = $this->getJson(route('xtream.api.player').'?'.http_build_query([
+            'username' => $this->username,
+            'password' => $this->password,
+            'action' => 'panel',
+        ]));
+
+        $response->assertOk();
+        
+        // Verify that categories and available_channels are NOT in the response
+        $response->assertJsonMissing(['categories']);
+        $response->assertJsonMissing(['available_channels']);
+        
+        // But user_info and server_info should still be there
+        $response->assertJsonStructure([
+            'user_info',
+            'server_info',
+        ]);
+    }
+
+    public function test_player_api_endpoint_without_action_defaults_to_panel_and_excludes_categories(): void
+    {
+        // Create some channels
+        $group = Group::factory()->for($this->user)->create();
+        Channel::factory()->for($this->playlist)->for($group)->create([
+            'enabled' => true,
+            'is_vod' => false,
+        ]);
+
+        // Call player_api endpoint without action parameter (defaults to panel)
+        $response = $this->getJson(route('xtream.api.player').'?'.http_build_query([
+            'username' => $this->username,
+            'password' => $this->password,
+        ]));
+
+        $response->assertOk();
+        
+        // Verify that categories and available_channels are NOT in the response for player_api
+        $response->assertJsonMissing(['categories']);
+        $response->assertJsonMissing(['available_channels']);
     }
 }
