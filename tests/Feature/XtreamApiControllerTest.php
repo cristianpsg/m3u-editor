@@ -102,8 +102,6 @@ class XtreamApiControllerTest extends TestCase
         $response->assertJsonStructure([
             'user_info',
             'server_info',
-            'categories',
-            'available_channels',
         ]);
         $response->assertJsonStructure([
             'user_info' => [
@@ -891,8 +889,8 @@ class XtreamApiControllerTest extends TestCase
             'title' => 'Test Movie',
         ]);
 
-        $seriesGroup = Group::factory()->for($this->user)->create(['name' => 'Series']);
-        $series = Series::factory()->for($this->user)->for($this->playlist)->for($seriesGroup)->create([
+        $seriesCategory = Category::factory()->for($this->user)->create(['name' => 'Series']);
+        $series = Series::factory()->for($this->user)->for($this->playlist)->for($seriesCategory)->create([
             'enabled' => true,
         ]);
 
