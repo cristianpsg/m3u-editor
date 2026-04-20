@@ -222,6 +222,39 @@ class XtreamService
         return $this->call(url: $url, timeout: $timeout) ?? []; // set short timeout
     }
 
+    /**
+     * Call the panel_api.php endpoint to get user and server information.
+     *
+     * @return array{user_info: array, server_info: array} Full panel API response
+     */
+    public function panelApi(int $timeout = 5): array
+    {
+        $url = $this->server
+            ."/panel_api.php?username={$this->user}&password={$this->pass}";
+
+        return $this->call(url: $url, timeout: $timeout) ?? [];
+    }
+
+    /**
+     * Get user info from panel_api.php.
+     *
+     * @return array User info array (username, auth, status, exp_date, is_trial, etc.)
+     */
+    public function panelUserInfo(int $timeout = 5): array
+    {
+        return $this->panelApi($timeout)['user_info'] ?? [];
+    }
+
+    /**
+     * Get server info from panel_api.php.
+     *
+     * @return array Server info array (url, port, https_port, server_protocol, etc.)
+     */
+    public function panelServerInfo(int $timeout = 5): array
+    {
+        return $this->panelApi($timeout)['server_info'] ?? [];
+    }
+
     public function getLiveCategories(): array
     {
         return $this->call($this->makeUrl('get_live_categories')) ?? [];

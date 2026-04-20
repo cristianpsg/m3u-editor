@@ -755,4 +755,89 @@ class XtreamApiControllerTest extends TestCase
         $this->assertEquals(0, $noArchiveData['tv_archive'], 'tv_archive should be 0 when no shift and no catchup');
         $this->assertEquals(0, $noArchiveData['tv_archive_duration']);
     }
+
+    // Tests for /panel_api.php endpoint
+    public function test_panel_api_endpoint_returns_same_as_player_api_panel_action(): void
+    {
+        // Call /panel_api.php directly
+        $response = $this->getJson(route('xtream.api.panel').'?'.http_build_query([
+            'username' => $this->username,
+            'password' => $this->password,
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'user_info',
+            'server_info',
+        ]);
+        $response->assertJsonPath('user_info.status', 'Active');
+    }
+
+    public function test_panel_api_endpoint_with_invalid_credentials_returns_unauthorized(): void
+    {
+        $response = $this->getJson(route('xtream.api.panel').'?'.http_build_query([
+            'username' => 'invalid_user',
+            'password' => 'invalid_password',
+        ]));
+
+        $response->assertStatus(401);
+        $response->assertJson(['error' => 'Unauthorized']);
+    }
+
+    public function test_panel_api_endpoint_with_missing_credentials_returns_validation_error(): void
+    {
+        $response = $this->getJson(route('xtream.api.panel').'?'.http_build_query([
+            'username' => $this->username,
+            // missing password
+        ]));
+
+        $response->assertStatus(422);
+    }
+
+    public function test_panel_api_endpoint_returns_user_info_with_expected_fields(): void
+    {
+        $response = $this->getJson(route('xtream.api.panel').'?'.http_build_query([
+            'username' => $this->username,
+            'password' => $this->password,
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'user_info' => [
+                'username',
+                'password',
+                'auth',
+                'status',
+                'exp_date',
+                'is_trial',
+                'active_cons',
+                'max_connections',
+                'allowed_output_formats',
+            ],
+        ]);
+        $response->assertJsonPath('user_info.username', $this->username);
+        $response->assertJsonPath('user_info.auth', 1);
+        $response->assertJsonPath('user_info.status', 'Active');
+    }
+
+    public function test_panel_api_endpoint_returns_server_info_with_expected_fields(): void
+    {
+        $response = $this->getJson(route('xtream.api.panel').'?'.http_build_query([
+            'username' => $this->username,
+            'password' => $this->password,
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'server_info' => [
+                'url',
+                'port',
+                'https_port',
+                'server_protocol',
+                'rtmp_port',
+                'timezone',
+                'timestamp_now',
+            ],
+        ]);
+    }
 }
