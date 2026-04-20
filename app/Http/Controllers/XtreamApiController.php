@@ -537,14 +537,35 @@ class XtreamApiController extends Controller
                         'category_name' => $tag->name,
                     ])->toArray();
 
+                    // For custom playlists: get series category tags
                     $seriesIds = $playlist->series()->where('enabled', true)->pluck('id');
-                    $seriesTags = $playlist->groupTags()->whereIn('id', function ($query) use ($seriesIds) {
+                    $seriesTags = $playlist->categoryTags()->whereIn('id', function ($query) use ($seriesIds) {
                         $query->select('tag_id')->from('taggables')->where('taggable_type', Series::class)->whereIn('taggable_id', $seriesIds);
                     })->orderBy('order_column')->get();
                     $seriesCategories = $seriesTags->map(fn ($tag) => [
                         'category_id' => (string) $tag->id,
                         'category_name' => $tag->name,
-                    ])->toArray();
+                    ])->values()->unique('category_id')->toArray();
+
+                    // Also add fallback categories from series without custom tags
+                    if ($seriesIds->isNotEmpty()) {
+                        $fallbackCategories = Category::whereIn('id', function ($query) use ($seriesIds) {
+                            $query->select('category_id')
+                                ->from('series')
+                                ->whereIn('id', $seriesIds)
+                                ->whereNotNull('category_id');
+                        })->get();
+
+                        foreach ($fallbackCategories as $category) {
+                            $existingIds = array_column($seriesCategories, 'category_id');
+                            if (! in_array((string) $category->id, $existingIds)) {
+                                $seriesCategories[] = [
+                                    'category_id' => (string) $category->id,
+                                    'category_name' => $category->name,
+                                ];
+                            }
+                        }
+                    }
                 } else {
                     $liveCategories = $playlist->groups()->orderBy('sort_order')->whereHas('channels', function ($query) use ($aliasLiveGroupFilter) {
                         $query->where('enabled', true)->where('is_vod', false);
@@ -563,12 +584,19 @@ class XtreamApiController extends Controller
                         'category_name' => $group->name,
                     ])->toArray();
 
-                    $seriesCategories = $playlist->groups()->orderBy('sort_order')->whereHas('series', function ($query) {
-                        $query->where('enabled', true);
-                    })->get()->map(fn ($group) => [
-                        'category_id' => (string) $group->id,
-                        'category_name' => $group->name,
-                    ])->toArray();
+                    // Get categories from series — series are associated with categories, not groups
+                    $seriesCategories = $playlist->series()
+                        ->where('enabled', true)
+                        ->with('category')
+                        ->get()
+                        ->pluck('category')
+                        ->filter()
+                        ->unique('id')
+                        ->sortBy('sort_order')
+                        ->map(fn ($category) => [
+                            'category_id' => (string) $category->id,
+                            'category_name' => $category->name,
+                        ])->toArray();
                 }
                 $categories = [
                     'live' => $liveCategories,
