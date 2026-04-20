@@ -38,7 +38,7 @@ Tip: All HLS and broadcast segment GC runs automatically inside the proxy. Use `
 - **Real seeking**: The broadcast uses FFmpeg input-level seeking (`-ss` before `-i`) to ensure the stream actually begins at the calculated offset. The media server `StartTimeTicks` parameter is still used as a hint when fetching the media.
 - **Resilience & healing**: If FFmpeg dies, the heal command clears stale PID entries and attempts to restart using the persisted reference.
 - **HLS Garbage Collection**: The proxy runs background GC tasks automatically — one for streaming HLS temp dirs and one for broadcast segment directories. Use `php artisan network:cleanup-segments` for a manual sweep.
-- **Xtream API support for networks**: `player_api.php` endpoints are supported so IPTV players can list networks and fetch EPG; `/live/` stream requests redirect to the network HLS URL.
+- **Xtream API support for networks**: `player_api.php` and `panel_api.php` endpoints are supported so IPTV players can list networks and fetch EPG; `/live/` stream requests redirect to the network HLS URL.
 
 ---
 
@@ -101,6 +101,7 @@ ffmpeg -y -ss 3600 -re -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 1
   - Per-network `ffmpeg.log` under network HLS storage (e.g., `storage/app/networks/{uuid}/ffmpeg.log`)
   - Laravel logs show `HLS_METRIC` entries: `broadcast_started`, `broadcast_crashed`, `broadcast_healed`, `broadcast_stopped`.
 - Test Xtream API (replace `uuid` & `admin`/password accordingly):
+  - Panel info: curl "http://localhost:36400/panel_api.php?username=admin&password=<playlist_uuid>"
   - List streams: curl "http://localhost:36400/player_api.php?username=admin&password=<playlist_uuid>&action=get_live_streams"
   - List categories: curl "...&action=get_live_categories"
   - Short EPG: curl "...&action=get_short_epg&stream_id=<network_id>&limit=4"
