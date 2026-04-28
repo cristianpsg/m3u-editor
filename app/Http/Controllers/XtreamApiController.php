@@ -605,10 +605,87 @@ class XtreamApiController extends Controller
                 ];
 
                 // Available channels count
-                $availableChannels = $playlist->channels()->where('enabled', true)->count() + $playlist->series()->where('enabled', true)->count();
+                $availableChannelsCount = $playlist->channels()->where('enabled', true)->count() + $playlist->series()->where('enabled', true)->count();
+
+                // Build a detailed map of available channels (keyed by id) to mirror real panel_api responses.
+                $availableChannelsMap = [];
+
+                // Live channels
+                $channelsForMap = $playlist->channels()->where('enabled', true)->with(['group', 'epgChannel'])->get();
+                foreach ($channelsForMap as $ch) {
+                    $chIcon = $baseUrl.'/placeholder.png';
+                    if ($ch->logo) {
+                        $chIcon = $ch->logo;
+                    } elseif ($ch->logo_type === ChannelLogoType::Epg && $ch->epgChannel && $ch->epgChannel->icon) {
+                        $chIcon = $ch->epgChannel->icon;
+                    } elseif ($ch->logo_type === ChannelLogoType::Channel && ($ch->logo || $ch->logo_internal)) {
+                        $logo = $ch->logo ?? $ch->logo_internal ?? '';
+                        $chIcon = filter_var($logo, FILTER_VALIDATE_URL) ? $logo : $baseUrl."/$logo";
+                    }
+
+                    if ($playlist->enable_logo_proxy) {
+                        $chIcon = LogoProxyController::generateProxyUrl($chIcon);
+                    }
+
+                    $tvgId = $ch->source_id ?? $ch->id;
+                    $tvgId = preg_replace(config('dev.tvgid.regex'), '', $tvgId);
+
+                    $categoryName = $ch->group?->name ?? '';
+
+                    $availableChannelsMap[(string) $ch->id] = [
+                        'num' => $ch->channel ?? null,
+                        'name' => $ch->title_custom ?? $ch->title,
+                        'stream_type' => 'live',
+                        'type_name' => 'Live Streams',
+                        'stream_id' => (string) $ch->id,
+                        'stream_icon' => $chIcon,
+                        'epg_channel_id' => $tvgId,
+                        'added' => (string) $ch->created_at->timestamp,
+                        'category_name' => $categoryName,
+                        'category_id' => (string) $ch->group_id,
+                        'series_no' => null,
+                        'live' => '1',
+                        'container_extension' => null,
+                        'custom_sid' => $ch->stream_id_custom ?? '',
+                        'tv_archive' => (! $disableCatchup && ($ch->catchup || $ch->shift)) ? 1 : 0,
+                        'direct_source' => '',
+                        'tv_archive_duration' => $disableCatchup ? 0 : ($ch->shift ?? 0),
+                    ];
+                }
+
+                // VOD channels
+                $vodChannels = $playlist->channels()->where('enabled', true)->where('is_vod', true)->with('group')->get();
+                foreach ($vodChannels as $vc) {
+                    $vcIcon = $vc->cover ?? $vc->stream_icon ?? $baseUrl.'/placeholder.png';
+                    if ($playlist->enable_logo_proxy) {
+                        $vcIcon = LogoProxyController::generateProxyUrl($vcIcon);
+                    }
+
+                    $availableChannelsMap[(string) $vc->id] = [
+                        'num' => null,
+                        'name' => $vc->title_custom ?? $vc->title,
+                        'stream_type' => 'movie',
+                        'type_name' => 'VOD Streams',
+                        'stream_id' => (string) $vc->id,
+                        'stream_icon' => $vcIcon,
+                        'epg_channel_id' => null,
+                        'added' => (string) $vc->created_at->timestamp,
+                        'category_name' => $vc->group?->name ?? '',
+                        'category_id' => (string) $vc->group_id,
+                        'series_no' => null,
+                        'live' => '0',
+                        'container_extension' => $vc->container_extension ?? null,
+                        'custom_sid' => $vc->stream_id_custom ?? '',
+                        'tv_archive' => 0,
+                        'direct_source' => '',
+                        'tv_archive_duration' => 0,
+                    ];
+                }
 
                 $responseData['categories'] = $categories;
-                $responseData['available_channels'] = $availableChannels;
+                $responseData['available_channels'] = $availableChannelsCount;
+                // Provide a detailed map similar to real panel_api implementations (keeps backwards compatibility)
+                $responseData['available_channels_map'] = $availableChannelsMap;
             }
 
             $responseData['m3u_editor'] = [
@@ -616,20 +693,7 @@ class XtreamApiController extends Controller
                 'features' => ['viewers', 'progress'],
             ];
 
-            $response = response()->json($responseData);
-
-            // Apply gzip compression for panel_api endpoint if client accepts it
-            if ($isPanelApi && str_contains($request->header('Accept-Encoding', ''), 'gzip')) {
-                $content = $response->getContent();
-                $gzipped = gzcompress($content, 9);
-
-                return response($gzipped)
-                    ->header('Content-Encoding', 'gzip')
-                    ->header('Content-Type', 'application/json')
-                    ->header('Content-Length', strlen($gzipped));
-            }
-
-            return $response;
+            return response()->json($responseData);
         } elseif ($action === 'get_live_streams') {
             // Handle network playlists - return networks as live streams
             if ($isNetworkPlaylist) {
