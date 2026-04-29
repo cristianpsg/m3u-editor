@@ -604,8 +604,6 @@ class XtreamApiController extends Controller
                     'series' => $seriesCategories,
                 ];
 
-
-
                 // Build a detailed map of available channels (keyed by id) to mirror real panel_api responses.
                 $availableChannelsMap = [];
 
@@ -646,7 +644,7 @@ class XtreamApiController extends Controller
                         'live' => '1',
                         'container_extension' => null,
                         'custom_sid' => $ch->stream_id_custom ?? '',
-                        'tv_archive' => (!$disableCatchup && ($ch->catchup || $ch->shift)) ? 1 : 0,
+                        'tv_archive' => (! $disableCatchup && ($ch->catchup || $ch->shift)) ? 1 : 0,
                         'direct_source' => '',
                         'tv_archive_duration' => $disableCatchup ? 0 : ($ch->shift ?? 0),
                     ];
@@ -807,7 +805,7 @@ class XtreamApiController extends Controller
                     }
 
                     $idChannelBy = $playlist->id_channel_by;
-                    $channelNo = ($isCustomPlaylist && !empty($channel->pivot?->channel_number))
+                    $channelNo = ($isCustomPlaylist && ! empty($channel->pivot?->channel_number))
                         ? (int) $channel->pivot->channel_number
                         : $channel->channel;
                     if (! $channelNo && ($playlist->auto_channel_increment || $idChannelBy === PlaylistChannelId::Number)) {
@@ -862,7 +860,7 @@ class XtreamApiController extends Controller
                         'added' => (string) $channel->created_at->timestamp,
                         'category_id' => $channelCategoryId,
                         'category_ids' => [(int) $channelCategoryId],
-                        'tv_archive' => (!$disableCatchup && ($channel->catchup || $channel->shift)) ? 1 : 0,
+                        'tv_archive' => (! $disableCatchup && ($channel->catchup || $channel->shift)) ? 1 : 0,
                         'tv_archive_duration' => $disableCatchup ? 0 : ($channel->shift ?? 0),
                         'custom_sid' => $channel->stream_id_custom ?? '',
                         'thumbnail' => $thumbnail,
@@ -995,7 +993,7 @@ class XtreamApiController extends Controller
 
                     $extension = $channel->container_extension ?? 'mkv';
                     $tmdb = $channel->info['tmdb_id'] ?? $channel->movie_data['tmdb_id'] ?? 0;
-                    $vodChannelNo = ($isCustomPlaylist && !empty($channel->pivot?->channel_number))
+                    $vodChannelNo = ($isCustomPlaylist && ! empty($channel->pivot?->channel_number))
                         ? (int) $channel->pivot->channel_number
                         : ($channel->channel ?: $index + 1);
 
@@ -1163,10 +1161,10 @@ class XtreamApiController extends Controller
             }
 
             // Check if this is a media server integration series (already has metadata from sync)
-            $isMediaServerSeries = !empty($seriesItem->metadata['media_server_id'] ?? null);
+            $isMediaServerSeries = ! empty($seriesItem->metadata['media_server_id'] ?? null);
 
             // Only try to fetch metadata for non-media-server series that need refresh
-            if (! $isMediaServerSeries && (!$seriesItem->last_metadata_fetch || $seriesItem->last_metadata_fetch < now()->subDays(1))) {
+            if (! $isMediaServerSeries && (! $seriesItem->last_metadata_fetch || $seriesItem->last_metadata_fetch < now()->subDays(1))) {
                 // Either no metadata, or stale metadata
                 $results = $seriesItem->fetchMetadata(sync: false);
                 if ($results === false) {
@@ -1736,7 +1734,7 @@ class XtreamApiController extends Controller
             $cacheService = new EpgCacheService;
             $epg = Epg::find($channel->epgChannel->epg_id);
 
-            if (! $epg || !$epg->is_cached) {
+            if (! $epg || ! $epg->is_cached) {
                 return response()->json(['epg_listings' => []]);
             }
 
@@ -1787,7 +1785,7 @@ class XtreamApiController extends Controller
                         'start_timestamp' => (string) $startTime->timestamp,
                         'stop_timestamp' => (string) $endTime->timestamp,
                         'now_playing' => ($isCurrentProgramme && $isNowPlaying) ? 1 : 0,
-                        'has_archive' => (!$disableCatchup && $channel->catchup && $endTime->lt($now)) ? 1 : 0,
+                        'has_archive' => (! $disableCatchup && $channel->catchup && $endTime->lt($now)) ? 1 : 0,
                     ];
                     $count++;
                 }
@@ -1826,7 +1824,7 @@ class XtreamApiController extends Controller
             $cacheService = new EpgCacheService;
             $epg = Epg::find($channel->epgChannel->epg_id);
 
-            if (! $epg || !$epg->is_cached) {
+            if (! $epg || ! $epg->is_cached) {
                 return response()->json(['epg_listings' => []]);
             }
 
@@ -1867,7 +1865,7 @@ class XtreamApiController extends Controller
                         'start_timestamp' => (string) $startTime->timestamp,
                         'stop_timestamp' => (string) $endTime->timestamp,
                         'now_playing' => ($isCurrentProgramme && $isNowPlaying) ? 1 : 0,
-                        'has_archive' => (!$disableCatchup && $channel->catchup && $endTime->lt($now)) ? 1 : 0,
+                        'has_archive' => (! $disableCatchup && $channel->catchup && $endTime->lt($now)) ? 1 : 0,
                     ];
                 }
             }
@@ -1907,7 +1905,7 @@ class XtreamApiController extends Controller
                 $epgId = $channel->epgChannel->epg_id;
                 if (! isset($epgGroups[$epgId])) {
                     $epg = Epg::find($epgId);
-                    if (! $epg || !$epg->is_cached) {
+                    if (! $epg || ! $epg->is_cached) {
                         continue;
                     }
                     $epgGroups[$epgId] = ['epg' => $epg, 'channelMap' => []];
@@ -2044,7 +2042,7 @@ class XtreamApiController extends Controller
                             'start_timestamp' => (string) $startTime->timestamp,
                             'stop_timestamp' => (string) $endTime->timestamp,
                             'now_playing' => ($isCurrentProgramme && $isNowPlaying) ? 1 : 0,
-                            'has_archive' => (!$disableCatchup && $channel->catchup && $endTime->lt($now)) ? 1 : 0,
+                            'has_archive' => (! $disableCatchup && $channel->catchup && $endTime->lt($now)) ? 1 : 0,
                         ];
                     }
                     $result[(string) $streamId] = ['epg_listings' => $epgListings];
@@ -2413,7 +2411,7 @@ class XtreamApiController extends Controller
         $contentType = $request->input('content_type');
         $streamId = (int) $request->input('stream_id');
 
-        if (! $contentType || !$streamId) {
+        if (! $contentType || ! $streamId) {
             return response()->json(['error' => 'content_type and stream_id are required'], 400);
         }
 
@@ -2438,7 +2436,7 @@ class XtreamApiController extends Controller
         $contentType = $request->input('content_type');
         $streamId = (int) $request->input('stream_id');
 
-        if (! $contentType || !$streamId) {
+        if (! $contentType || ! $streamId) {
             return response()->json(['error' => 'content_type and stream_id are required'], 400);
         }
 
@@ -2565,7 +2563,7 @@ class XtreamApiController extends Controller
         $networkId = (int) str_replace('network-', '', $streamId);
 
         // Check if playlist supports attached networks
-        if (! method_exists($playlist, 'enabled_networks') || !$playlist->include_networks_in_m3u) {
+        if (! method_exists($playlist, 'enabled_networks') || ! $playlist->include_networks_in_m3u) {
             return response()->json(['epg_listings' => []]);
         }
 
@@ -2617,7 +2615,7 @@ class XtreamApiController extends Controller
         $networkId = (int) str_replace('network-', '', $streamId);
 
         // Check if playlist supports attached networks
-        if (! method_exists($playlist, 'enabled_networks') || !$playlist->include_networks_in_m3u) {
+        if (! method_exists($playlist, 'enabled_networks') || ! $playlist->include_networks_in_m3u) {
             return response()->json(['epg_listings' => []]);
         }
 
