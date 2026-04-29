@@ -878,11 +878,12 @@ class XtreamApiControllerTest extends TestCase
             'available_channels',
         ]);
 
-        // Verify categories exist and available_channels is at least 2 (live + vod channels)
+        // Verify categories exist and available_channels is a map/array with at least 2 entries (live + vod channels)
         $this->assertIsArray($response->json('categories.live'));
         $this->assertIsArray($response->json('categories.vod'));
         $this->assertIsArray($response->json('categories.series'));
-        $this->assertGreaterThanOrEqual(2, $response->json('available_channels'));
+        $this->assertIsArray($response->json('available_channels'));
+        $this->assertGreaterThanOrEqual(2, count($response->json('available_channels')));
     }
 
     public function test_panel_api_endpoint_with_no_channels_returns_empty_categories(): void
@@ -906,8 +907,8 @@ class XtreamApiControllerTest extends TestCase
         $response->assertJsonPath('categories.vod', []);
         $response->assertJsonPath('categories.series', []);
 
-        // Verify available_channels is 0
-        $response->assertJsonPath('available_channels', 0);
+        // Verify available_channels is an empty map/array
+        $response->assertJsonPath('available_channels', []);
     }
 
     public function test_player_api_endpoint_does_not_return_categories_and_available_channels(): void

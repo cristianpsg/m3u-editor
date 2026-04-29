@@ -604,8 +604,7 @@ class XtreamApiController extends Controller
                     'series' => $seriesCategories,
                 ];
 
-                // Available channels count
-                $availableChannelsCount = $playlist->channels()->where('enabled', true)->count() + $playlist->series()->where('enabled', true)->count();
+
 
                 // Build a detailed map of available channels (keyed by id) to mirror real panel_api responses.
                 $availableChannelsMap = [];
@@ -683,9 +682,8 @@ class XtreamApiController extends Controller
                 }
 
                 $responseData['categories'] = $categories;
-                $responseData['available_channels'] = $availableChannelsCount;
-                // Provide a detailed map similar to real panel_api implementations (keeps backwards compatibility)
-                $responseData['available_channels_map'] = $availableChannelsMap;
+                // Provide a detailed map of available channels under 'available_channels' (renamed from available_channels_map)
+                $responseData['available_channels'] = $availableChannelsMap;
             }
 
             $responseData['m3u_editor'] = [
