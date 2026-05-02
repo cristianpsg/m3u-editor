@@ -526,6 +526,7 @@ class XtreamApiController extends Controller
                     $liveCategories = $liveTags->map(fn ($tag) => [
                         'category_id' => (string) $tag->id,
                         'category_name' => $tag->name,
+                        'parent_id' => 0,
                     ])->toArray();
 
                     $vodChannelIds = $playlist->channels()->where('enabled', true)->where('is_vod', true)->pluck('id');
@@ -535,6 +536,7 @@ class XtreamApiController extends Controller
                     $vodCategories = $vodTags->map(fn ($tag) => [
                         'category_id' => (string) $tag->id,
                         'category_name' => $tag->name,
+                        'parent_id' => 0,
                     ])->toArray();
 
                     // For custom playlists: get series category tags
@@ -545,6 +547,7 @@ class XtreamApiController extends Controller
                     $seriesCategories = $seriesTags->map(fn ($tag) => [
                         'category_id' => (string) $tag->id,
                         'category_name' => $tag->name,
+                        'parent_id' => 0,
                     ])->values()->unique('category_id')->toArray();
 
                     // Also add fallback categories from series without custom tags
@@ -562,6 +565,7 @@ class XtreamApiController extends Controller
                                 $seriesCategories[] = [
                                     'category_id' => (string) $category->id,
                                     'category_name' => $category->name,
+                                    'parent_id' => 0,
                                 ];
                             }
                         }
@@ -575,6 +579,7 @@ class XtreamApiController extends Controller
                     })->get()->map(fn ($group) => [
                         'category_id' => (string) $group->id,
                         'category_name' => $group->name,
+                        'parent_id' => 0,
                     ])->toArray();
 
                     $vodCategories = $playlist->groups()->orderBy('sort_order')->whereHas('channels', function ($query) {
@@ -582,6 +587,7 @@ class XtreamApiController extends Controller
                     })->get()->map(fn ($group) => [
                         'category_id' => (string) $group->id,
                         'category_name' => $group->name,
+                        'parent_id' => 0,
                     ])->toArray();
 
                     // Get categories from series — series are associated with categories, not groups
@@ -596,6 +602,7 @@ class XtreamApiController extends Controller
                         ->map(fn ($category) => [
                             'category_id' => (string) $category->id,
                             'category_name' => $category->name,
+                            'parent_id' => 0,
                         ])->toArray();
                 }
                 $categories = [
