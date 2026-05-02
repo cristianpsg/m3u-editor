@@ -615,7 +615,7 @@ class XtreamApiController extends Controller
                 $availableChannelsMap = [];
 
                 // Live channels
-                $channelsForMap = $playlist->channels()->where('enabled', true)->with(['group', 'epgChannel'])->get();
+                $channelsForMap = $playlist->channels()->where('enabled', true)->with(['group', 'epgChannel', 'tags'])->get();
                 foreach ($channelsForMap as $ch) {
                     $chIcon = $baseUrl.'/placeholder.png';
                     if ($ch->logo) {
@@ -634,7 +634,22 @@ class XtreamApiController extends Controller
                     $tvgId = $ch->source_id ?? $ch->id;
                     $tvgId = preg_replace(config('dev.tvgid.regex'), '', $tvgId);
 
-                    $categoryName = $ch->group?->name ?? '';
+                    // Determine category_name based on playlist type
+                    $categoryName = '';
+                    $categoryId = '';
+                    if ($isCustomPlaylist) {
+                        $customTag = $ch->tags()->where('type', $tagUuid)->first();
+                        if ($customTag) {
+                            $categoryName = $customTag->name;
+                            $categoryId = (string) $customTag->id;
+                        } elseif ($ch->group) {
+                            $categoryName = $ch->group->name;
+                            $categoryId = (string) $ch->group_id;
+                        }
+                    } else {
+                        $categoryName = $ch->group?->name ?? '';
+                        $categoryId = (string) $ch->group_id;
+                    }
 
                     $availableChannelsMap[(string) $ch->id] = [
                         'num' => $ch->channel ?? null,
@@ -646,7 +661,7 @@ class XtreamApiController extends Controller
                         'epg_channel_id' => $tvgId,
                         'added' => (string) $ch->created_at->timestamp,
                         'category_name' => $categoryName,
-                        'category_id' => (string) $ch->group_id,
+                        'category_id' => $categoryId,
                         'series_no' => null,
                         'live' => '1',
                         'container_extension' => null,
@@ -658,11 +673,28 @@ class XtreamApiController extends Controller
                 }
 
                 // VOD channels
-                $vodChannels = $playlist->channels()->where('enabled', true)->where('is_vod', true)->with('group')->get();
+                $vodChannels = $playlist->channels()->where('enabled', true)->where('is_vod', true)->with(['group', 'tags'])->get();
                 foreach ($vodChannels as $vc) {
                     $vcIcon = $vc->cover ?? $vc->stream_icon ?? $baseUrl.'/placeholder.png';
                     if ($playlist->enable_logo_proxy) {
                         $vcIcon = LogoProxyController::generateProxyUrl($vcIcon);
+                    }
+
+                    // Determine category_name based on playlist type
+                    $vodCategoryName = '';
+                    $vodCategoryId = '';
+                    if ($isCustomPlaylist) {
+                        $customTag = $vc->tags()->where('type', $tagUuid)->first();
+                        if ($customTag) {
+                            $vodCategoryName = $customTag->name;
+                            $vodCategoryId = (string) $customTag->id;
+                        } elseif ($vc->group) {
+                            $vodCategoryName = $vc->group->name;
+                            $vodCategoryId = (string) $vc->group_id;
+                        }
+                    } else {
+                        $vodCategoryName = $vc->group?->name ?? '';
+                        $vodCategoryId = (string) $vc->group_id;
                     }
 
                     $availableChannelsMap[(string) $vc->id] = [
@@ -674,8 +706,8 @@ class XtreamApiController extends Controller
                         'stream_icon' => $vcIcon,
                         'epg_channel_id' => null,
                         'added' => (string) $vc->created_at->timestamp,
-                        'category_name' => $vc->group?->name ?? '',
-                        'category_id' => (string) $vc->group_id,
+                        'category_name' => $vodCategoryName,
+                        'category_id' => $vodCategoryId,
                         'series_no' => null,
                         'live' => '0',
                         'container_extension' => $vc->container_extension ?? null,
