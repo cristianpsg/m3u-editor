@@ -611,6 +611,13 @@ class XtreamApiController extends Controller
                     'series' => $seriesCategories,
                 ];
 
+                $categoryLookup = collect($categories['live'])
+                    ->merge($categories['vod'])
+                    ->merge($categories['series'])
+                    ->mapWithKeys(fn ($category) => [
+                        $category['category_id'] => $category['category_name'],
+                    ])->toArray();
+
                 // Build a detailed map of available channels (keyed by id) to mirror real panel_api responses.
                 $availableChannelsMap = [];
 
@@ -650,6 +657,8 @@ class XtreamApiController extends Controller
                         $categoryName = $ch->group?->name ?? '';
                         $categoryId = (string) $ch->group_id;
                     }
+
+                    $categoryName = $categoryName ?: ($categoryLookup[$categoryId] ?? '');
 
                     $availableChannelsMap[(string) $ch->id] = [
                         'num' => $ch->channel ?? null,
@@ -696,6 +705,8 @@ class XtreamApiController extends Controller
                         $vodCategoryName = $vc->group?->name ?? '';
                         $vodCategoryId = (string) $vc->group_id;
                     }
+
+                    $vodCategoryName = $vodCategoryName ?: ($categoryLookup[$vodCategoryId] ?? '');
 
                     $availableChannelsMap[(string) $vc->id] = [
                         'num' => null,
