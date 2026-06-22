@@ -87,7 +87,7 @@ RUN NODE_ENV=production npm run build && \
 ########################################
 # Stage 3: m3u-proxy builder - prepares Python proxy service
 ########################################
-FROM alpine:3.21.3 AS proxy_builder
+FROM alpine:3.24.1 AS proxy_builder
 
 # Cache bust arg - when this changes, Docker invalidates the layer cache
 # Pass the latest m3u-proxy commit SHA to ensure fresh clones
@@ -119,7 +119,7 @@ RUN --mount=type=bind,target=/build-context \
 ########################################
 # Stage 4: Runtime image
 ########################################
-FROM alpine:3.21.3 AS runtime
+FROM alpine:3.24.1 AS runtime
 
 # Labels for image metadata
 LABEL org.opencontainers.image.title="m3u-editor" \
